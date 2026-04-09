@@ -1,4 +1,4 @@
-// CSV parser — handles quoted fields (RFC 4180) and backslash-escaped commas from Lightspeed exports
+// CSV parser — handles quoted fields (RFC 4180) from Lightspeed exports
 
 export function parseCSV(text) {
   const lines = splitLines(text);
@@ -34,7 +34,7 @@ function splitLines(text) {
   return lines;
 }
 
-// Split a single CSV line into fields, handling quotes and backslash-escaped commas
+// Split a single CSV line into fields, handling quoted fields (RFC 4180)
 function splitLine(line) {
   const fields = [];
   let current = '';
@@ -49,17 +49,12 @@ function splitLine(line) {
         inQuotes = !inQuotes;
       }
     } else if (ch === ',' && !inQuotes) {
-      if (current.endsWith('\\')) {
-        // Lightspeed backslash-escaped comma — keep as literal comma
-        current = current.slice(0, -1) + ',';
-      } else {
-        fields.push(current);
-        current = '';
-      }
+      fields.push(current);
+      current = '';
     } else {
       current += ch;
     }
   }
-  fields.push(current.replace(/\\$/, ''));
+  fields.push(current);
   return fields;
 }

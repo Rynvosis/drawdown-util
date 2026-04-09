@@ -22,7 +22,7 @@ export function setup(panelContainer) {
 
   const paymentUpload = createUploadBox('Payment Type CSV');
   const transactionUpload = createUploadBox('Transactions CSV');
-  uploadArea.append(paymentUpload.el, transactionUpload.el);
+  uploadArea.append(transactionUpload.el, paymentUpload.el);
 
   // Method picker — shown after payment CSV is loaded
   const pickerWrap = document.createElement('div');
