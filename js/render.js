@@ -51,7 +51,7 @@ export function renderSummaryCards(container, cards) {
   container.innerHTML = cards.map(c => `
     <div class="card">
       <div class="card-label">${c.label}</div>
-      <div class="card-value ${c.color || ''}">${c.value}</div>
+      <div class="card-value ${c.color || ''}">${c.value}${c.afterHtml || ''}</div>
     </div>
   `).join('');
 }

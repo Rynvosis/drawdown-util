@@ -112,11 +112,10 @@ function process(payments, transactions, roomMethods) {
 
   const room = [];
   const till = [];
-  let unmatched = 0;
+  const unmatchedEntries = [];
 
   for (const t of transactions) {
     const method = accountMethod[t.Account];
-    if (method === undefined) { unmatched++; continue; }
 
     const entry = {
       _glCode: cleanGroupName(t.Group),
@@ -134,11 +133,18 @@ function process(payments, transactions, roomMethods) {
       _taxName: t.TaxName || '',
     };
 
-    if (roomMethods.has(method)) room.push(entry);
-    else till.push(entry);
+    if (method === undefined) {
+      entry._type = t.Type || '';
+      entry._account = t.Account || '';
+      unmatchedEntries.push(entry);
+    } else if (roomMethods.has(method)) {
+      room.push(entry);
+    } else {
+      till.push(entry);
+    }
   }
 
-  render(room, till, unmatched);
+  render(room, till, unmatchedEntries);
 }
 
 const COLUMNS = [
@@ -157,21 +163,70 @@ const COLUMNS = [
   { key: '_taxName', label: 'Tax Rate', style: 'font-size:0.75rem' },
 ];
 
-function render(room, till, unmatched) {
+const UNMATCHED_COLUMNS = [
+  { key: '_glCode', label: 'GL Code', style: 'color:var(--text-muted);font-size:0.75rem' },
+  { key: '_type', label: 'Type', style: 'font-weight:600;font-size:0.75rem' },
+  { key: '_account', label: 'Account', style: 'color:var(--text-muted);font-size:0.75rem' },
+  { key: '_date', label: 'Date', format: v => formatDate(v) },
+  { key: '_time', label: 'Time' },
+  { key: '_item', label: 'Item', title: true },
+  { key: '_staff', label: 'Staff' },
+  { key: '_qty', label: 'Qty', num: true },
+  { key: '_unitPrice', label: 'Unit Price', num: true, currency: true },
+  { key: '_discount', label: 'Discount', num: true, currency: true },
+  { key: '_finalPrice', label: 'Final Price', num: true, currency: true, totalHighlight: true },
+  { key: '_preTax', label: 'Pre-Tax', num: true, currency: true },
+  { key: '_taxAmount', label: 'VAT', num: true, currency: true },
+  { key: '_taxName', label: 'Tax Rate', style: 'font-size:0.75rem' },
+];
+
+function render(room, till, unmatchedEntries) {
   document.getElementById('results').style.display = 'block';
 
   const roomTotal = room.reduce((s, e) => s + e._finalPrice, 0);
   const tillTotal = till.reduce((s, e) => s + e._finalPrice, 0);
+  const unmatchedTotal = unmatchedEntries.reduce((s, e) => s + e._finalPrice, 0);
+  const matched = room.length + till.length;
 
-  renderSummaryCards(document.getElementById('summaryCards'), [
+  const cards = [
     { label: 'Room Billing', value: `\u00A3${fmt(roomTotal)}`, color: 'green' },
     { label: 'Till Payments', value: `\u00A3${fmt(tillTotal)}`, color: 'orange' },
     { label: 'Grand Total', value: `\u00A3${fmt(roomTotal + tillTotal)}` },
-    { label: 'Transactions', value: `${room.length + till.length}${unmatched ? ` (${unmatched} unmatched)` : ''}` },
-  ]);
+  ];
+
+  if (unmatchedEntries.length > 0) {
+    cards.push({
+      label: 'Transactions',
+      value: `${matched}`,
+      afterHtml: ` <a href="#unmatched-section" class="unmatched-link">(${unmatchedEntries.length} unmatched)</a>`,
+    });
+  } else {
+    cards.push({ label: 'Transactions', value: `${matched}` });
+  }
+
+  renderSummaryCards(document.getElementById('summaryCards'), cards);
 
   const sections = document.getElementById('reportSections');
   sections.innerHTML = '';
   sections.appendChild(buildSheetSection('Room Billing', room, COLUMNS, e => e._glCode, 'green'));
   sections.appendChild(buildSheetSection('Till Payments', till, COLUMNS, e => e._glCode, 'orange'));
+
+  if (unmatchedEntries.length > 0) {
+    const unmatchedSection = buildSheetSection('Unmatched Transactions', unmatchedEntries, UNMATCHED_COLUMNS, e => e._glCode, 'red');
+    unmatchedSection.id = 'unmatched-section';
+
+    // Net total message
+    const netZero = Math.abs(unmatchedTotal) < 0.005;
+    const note = document.createElement('div');
+    note.className = netZero ? 'unmatched-note net-zero' : 'unmatched-note';
+    note.textContent = netZero
+      ? `These ${unmatchedEntries.length} transactions have no matching payment record (likely voided before payment). They net to \u00A30.00 — no money is unaccounted for.`
+      : `These ${unmatchedEntries.length} transactions have no matching payment record. Net value: \u00A3${fmt(unmatchedTotal)} — review to confirm this is expected.`;
+
+    // Insert note after the section header
+    const sectionHeader = unmatchedSection.querySelector('.section-header');
+    sectionHeader.after(note);
+
+    sections.appendChild(unmatchedSection);
+  }
 }

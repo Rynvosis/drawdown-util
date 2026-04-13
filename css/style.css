@@ -242,6 +242,7 @@ h1 {
 
 .section-badge.green { background: var(--green-bg); color: var(--green); }
 .section-badge.orange { background: var(--orange-bg); color: var(--orange); }
+.section-badge.red { background: #fef2f2; color: var(--red); }
 
 .section-meta {
   font-size: 0.75rem;
@@ -395,3 +396,32 @@ thead th.row-num {
 .cell-zero { color: #b0b4c4; }
 .cell-negative { color: var(--red); }
 .cell-currency { color: var(--text); }
+
+/* ── Unmatched transactions ── */
+.unmatched-link {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--red);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.unmatched-link:hover {
+  text-decoration: underline;
+}
+
+.unmatched-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  margin-bottom: 0.5rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.unmatched-note.net-zero {
+  background: var(--green-bg);
+  border-color: #bbf7d0;
+  color: var(--green);
+}
