@@ -2,7 +2,9 @@
 
 import { parseCSV } from './csv.js';
 
-export function createUploadBox(label, hint) {
+export function createUploadBox(label, options = {}) {
+  const { hint, requiredColumns = [] } = options;
+
   const box = document.createElement('div');
   box.className = 'upload-box';
 
@@ -31,9 +33,19 @@ export function createUploadBox(label, hint) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      data = parseCSV(ev.target.result);
-      box.classList.add('loaded');
-      statusEl.textContent = `${file.name} — ${data.length} rows`;
+      const parsed = parseCSV(ev.target.result);
+      const error = validate(parsed, requiredColumns);
+      if (error) {
+        data = null;
+        box.classList.remove('loaded');
+        box.classList.add('error');
+        statusEl.textContent = `${file.name} — ${error}`;
+      } else {
+        data = parsed;
+        box.classList.remove('error');
+        box.classList.add('loaded');
+        statusEl.textContent = `${file.name} — ${data.length} rows`;
+      }
       if (onChangeCallback) onChangeCallback(data);
     };
     reader.readAsText(file);
@@ -55,4 +67,12 @@ export function createUploadBox(label, hint) {
     getData: () => data,
     onChange(cb) { onChangeCallback = cb; }
   };
+}
+
+function validate(rows, requiredColumns) {
+  if (!rows.length) return 'empty or unreadable CSV';
+  const have = new Set(Object.keys(rows[0]));
+  const missing = requiredColumns.filter(c => !have.has(c));
+  if (missing.length) return `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')} — wrong file?`;
+  return null;
 }

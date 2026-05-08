@@ -219,6 +219,92 @@ export function buildSheetSection(title, entries, columns, groupKeyFn, color) {
   return section;
 }
 
+export function buildSummaryTable(title, rows, columns) {
+  const section = document.createElement('div');
+  section.className = 'section';
+
+  const totals = {};
+  for (const col of columns) {
+    if (col.num) totals[col.key] = rows.reduce((s, r) => s + (Number(r[col.key]) || 0), 0);
+  }
+
+  section.innerHTML = `
+    <div class="section-header">
+      <div><span class="section-title">${title}</span></div>
+      <button class="export-btn">Export CSV</button>
+    </div>
+  `;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'sheet-wrap summary-table';
+
+  const table = document.createElement('table');
+
+  let sortCol = null;
+  let sortAsc = true;
+
+  const thead = document.createElement('thead');
+  const headTr = document.createElement('tr');
+  columns.forEach((c, i) => {
+    const th = document.createElement('th');
+    th.className = (c.num ? 'num ' : '') + 'sortable';
+    th.innerHTML = `${c.label} <span class="sort-indicator"></span>`;
+    th.addEventListener('click', () => {
+      if (sortCol === i) sortAsc = !sortAsc;
+      else { sortCol = i; sortAsc = true; }
+      updateSortIndicators(headTr, columns, sortCol, sortAsc);
+      renderBody();
+    });
+    headTr.appendChild(th);
+  });
+  thead.appendChild(headTr);
+  table.appendChild(thead);
+
+  const tfoot = document.createElement('tfoot');
+  tfoot.innerHTML = `<tr>${columns.map((c, i) => {
+    if (i === 0) return '<td><strong>TOTAL</strong></td>';
+    if (!c.num) return '<td></td>';
+    const bold = c.totalHighlight ? '<strong>' : '';
+    const boldEnd = c.totalHighlight ? '</strong>' : '';
+    return `<td class="num">${bold}&pound;${fmt(totals[c.key] || 0)}${boldEnd}</td>`;
+  }).join('')}</tr>`;
+  table.appendChild(tfoot);
+
+  const tbody = document.createElement('tbody');
+  table.appendChild(tbody);
+
+  function renderBody() {
+    const sorted = [...rows];
+    if (sortCol !== null) {
+      const col = columns[sortCol];
+      sorted.sort((a, b) => {
+        const av = a[col.key], bv = b[col.key];
+        const cmp = col.num ? ((Number(av) || 0) - (Number(bv) || 0)) : String(av || '').localeCompare(String(bv || ''));
+        return sortAsc ? cmp : -cmp;
+      });
+    }
+    tbody.innerHTML = sorted.map(r => `<tr class="detail">${columns.map(c => {
+      const val = r[c.key];
+      if (c.num) {
+        const n = Number(val) || 0;
+        const bold = c.totalHighlight;
+        return `<td class="num">${bold ? '<strong>' : ''}${c.currency ? '&pound;' : ''}${fmtCell(n)}${bold ? '</strong>' : ''}</td>`;
+      }
+      return `<td style="${c.style || ''}">${escapeHtml(String(val || ''))}</td>`;
+    }).join('')}</tr>`).join('');
+  }
+
+  renderBody();
+  wrap.appendChild(table);
+  section.appendChild(wrap);
+
+  section.querySelector('.export-btn').addEventListener('click', () => {
+    exportCSV(title, columns, rows);
+  });
+
+  return section;
+}
+
 function updateSortIndicators(headTr, columns, sortCol, sortAsc) {
   const ths = headTr.querySelectorAll('th.sortable');
   ths.forEach((th, i) => {

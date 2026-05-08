@@ -6,7 +6,7 @@
 import { createUploadBox } from '../upload.js';
 import {
   fmt, cleanStaffName, cleanGroupName, formatDate,
-  renderSummaryCards, buildSheetSection
+  renderSummaryCards, buildSheetSection, buildSummaryTable
 } from '../render.js';
 
 export const id = 'payment-type';
@@ -20,8 +20,12 @@ export function setup(panelContainer) {
   const uploadArea = document.createElement('div');
   uploadArea.className = 'upload-area';
 
-  const paymentUpload = createUploadBox('Payment Type CSV');
-  const transactionUpload = createUploadBox('Transactions CSV');
+  const paymentUpload = createUploadBox('Payment Type CSV', {
+    requiredColumns: ['Account', 'Method', 'PaymentRef'],
+  });
+  const transactionUpload = createUploadBox('Transactions CSV', {
+    requiredColumns: ['Account', 'Group', 'Date', 'Item', 'Staff', 'Type', 'Qty', 'UnitPrice', 'Discount', 'FinalPrice', 'PreTax', 'TaxAmount', 'TaxName'],
+  });
   uploadArea.append(transactionUpload.el, paymentUpload.el);
 
   // Method picker — shown after payment CSV is loaded
@@ -55,13 +59,18 @@ export function setup(panelContainer) {
 
   // When payment CSV loads, detect methods and show picker
   paymentUpload.onChange(data => {
+    pickerList.innerHTML = '';
+    if (!data) {
+      pickerWrap.style.display = 'none';
+      checkReady();
+      return;
+    }
     const methods = new Set();
     for (const p of data) {
       const m = cleanMethodName(p.Method || '');
       if (m) methods.add(m);
     }
 
-    pickerList.innerHTML = '';
     for (const m of [...methods].sort()) {
       const label = document.createElement('label');
       label.className = 'picker-option';
@@ -117,6 +126,14 @@ function process(payments, transactions, roomMethods) {
   for (const t of transactions) {
     const method = accountMethod[t.Account];
 
+    // UnitPrice and Discount are per-unit in the source. For negative-qty rows
+    // (refunds/reversals) the source still reports them as positive, which
+    // makes them look like normal sales in the row display and breaks footer
+    // sums (a refund should net to zero against its sale, not double up).
+    // Mirror the qty sign so the row visually matches FinalPrice and totals.
+    const qtyNum = parseFloat(t.Qty) || 0;
+    const sign = qtyNum < 0 ? -1 : 1;
+
     const entry = {
       _glCode: cleanGroupName(t.Group),
       _date: (t.Date || '').split(' ')[0] || '',
@@ -125,8 +142,8 @@ function process(payments, transactions, roomMethods) {
       _staff: cleanStaffName(t.Staff),
       _ref: accountRef[t.Account] || '',
       _qty: t.Qty || '0',
-      _unitPrice: parseFloat(t.UnitPrice) || 0,
-      _discount: parseFloat(t.Discount) || 0,
+      _unitPrice: sign * (parseFloat(t.UnitPrice) || 0),
+      _discount: sign * (parseFloat(t.Discount) || 0),
       _finalPrice: parseFloat(t.FinalPrice) || 0,
       _preTax: parseFloat(t.PreTax) || 0,
       _taxAmount: parseFloat(t.TaxAmount) || 0,
@@ -206,8 +223,32 @@ function render(room, till, unmatchedEntries) {
 
   renderSummaryCards(document.getElementById('summaryCards'), cards);
 
+  // GL Code summary — aggregate room + till per GL code
+  const glSummary = {};
+  for (const e of room) {
+    const gl = e._glCode;
+    if (!glSummary[gl]) glSummary[gl] = { _glCode: gl, _room: 0, _till: 0, _total: 0 };
+    glSummary[gl]._room += e._finalPrice;
+    glSummary[gl]._total += e._finalPrice;
+  }
+  for (const e of till) {
+    const gl = e._glCode;
+    if (!glSummary[gl]) glSummary[gl] = { _glCode: gl, _room: 0, _till: 0, _total: 0 };
+    glSummary[gl]._till += e._finalPrice;
+    glSummary[gl]._total += e._finalPrice;
+  }
+  const glRows = Object.values(glSummary).sort((a, b) => a._glCode.localeCompare(b._glCode));
+
   const sections = document.getElementById('reportSections');
   sections.innerHTML = '';
+
+  sections.appendChild(buildSummaryTable('Summary by GL Code', glRows, [
+    { key: '_glCode', label: 'GL Code' },
+    { key: '_room', label: 'Room Billing', num: true, currency: true },
+    { key: '_till', label: 'Till Payments', num: true, currency: true },
+    { key: '_total', label: 'Total', num: true, currency: true, totalHighlight: true },
+  ]));
+
   sections.appendChild(buildSheetSection('Room Billing', room, COLUMNS, e => e._glCode, 'green'));
   sections.appendChild(buildSheetSection('Till Payments', till, COLUMNS, e => e._glCode, 'orange'));
 

@@ -104,6 +104,14 @@ h1 {
   background: var(--green-bg);
 }
 
+.upload-box.error {
+  border-color: var(--red);
+  border-style: solid;
+  background: #fef2f2;
+}
+
+.upload-box.error .upload-status { color: var(--red); }
+
 .upload-box input[type="file"] {
   position: absolute;
   inset: 0;
