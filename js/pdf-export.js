@@ -23,6 +23,10 @@ export function initPdfExport() {
   function applyOrientation() {
     const orientation = orientationSel.value === 'portrait' ? 'portrait' : 'landscape';
     pageStyle.textContent = `@page { size: A4 ${orientation}; margin: 12mm; }`;
+    // Portrait A4 is too narrow for the wide transaction tables at the default
+    // size, so the print stylesheet tightens font/padding under this class to
+    // keep every column on the page. Landscape keeps the roomier sizing.
+    document.documentElement.classList.toggle('print-portrait', orientation === 'portrait');
   }
 
   orientationSel.addEventListener('change', applyOrientation);

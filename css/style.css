@@ -550,4 +550,15 @@ thead th.row-num {
     text-overflow: clip;
     max-width: none;
   }
+
+  /* Portrait A4 (~700px printable) can't hold the wide transaction tables at
+     8pt — they'd run off the right edge. Tighten font and padding so all
+     columns fit the page width; long unbreakable tokens (refs) may wrap. */
+  html.print-portrait table { font-size: 7pt; }
+  html.print-portrait thead th,
+  html.print-portrait tbody td,
+  html.print-portrait tfoot td {
+    padding: 2px 4px;
+    word-break: break-word;
+  }
 }
