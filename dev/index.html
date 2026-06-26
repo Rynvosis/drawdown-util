@@ -18,6 +18,17 @@
   <div id="panels"></div>
 
   <div id="results">
+    <div class="report-toolbar no-print">
+      <label class="orientation-toggle" for="pdfOrientation">
+        Page orientation
+        <select id="pdfOrientation">
+          <option value="landscape" selected>Landscape (A4)</option>
+          <option value="portrait">Portrait (A4)</option>
+        </select>
+      </label>
+      <button id="exportPdfBtn" class="btn">Export PDF</button>
+    </div>
+    <div class="print-title">Drawdown Utility</div>
     <div class="summary-cards" id="summaryCards"></div>
     <div id="reportSections"></div>
   </div>
