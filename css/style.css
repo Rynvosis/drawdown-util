@@ -192,6 +192,36 @@ h1 {
 
 #results { display: none; }
 
+/* ── Report toolbar (PDF export) ── */
+.report-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.orientation-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.orientation-toggle select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  font-size: 0.78rem;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Title shown only on the printed/PDF output */
+.print-title { display: none; }
+
 /* ── Summary cards ── */
 .summary-cards {
   display: grid;
@@ -432,4 +462,92 @@ thead th.row-num {
   background: var(--green-bg);
   border-color: #bbf7d0;
   color: var(--green);
+}
+
+/* ── Print / PDF export ──
+   Page size & orientation come from an injected `@page` rule (js/pdf-export.js).
+   The rules below turn the on-screen, scrollable report into a clean A4
+   document whose table rows never get split across a page boundary. */
+@media print {
+  /* Render background fills (group shading, badges, totals) in the PDF. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    padding: 0;
+    background: #fff;
+  }
+
+  /* Hide everything that's screen-only chrome. */
+  .header,
+  .subtitle,
+  .tabs,
+  #panels,
+  .no-print,
+  .report-toolbar,
+  .export-btn,
+  .sort-indicator,
+  .toggle-arrow,
+  .unmatched-link {
+    display: none !important;
+  }
+
+  /* Results are normally hidden until processed; force them visible for print. */
+  #results { display: block !important; }
+
+  .print-title {
+    display: block;
+    font-size: 16pt;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Drop the scroll container so every row prints, not just the visible window. */
+  .sheet-wrap {
+    max-height: none !important;
+    overflow: visible !important;
+    border: 1px solid #999;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Reveal collapsed GL groups so nothing is silently omitted from the PDF,
+     without disturbing the on-screen expand/collapse state. */
+  .hidden-row { display: table-row !important; }
+
+  /* Keep each section together where it can, but allow long tables to flow
+     across pages. */
+  .section { break-inside: auto; margin-bottom: 1rem; }
+  .section-header { break-after: avoid; }
+  .summary-cards { break-inside: avoid; }
+  .card { break-inside: avoid; }
+
+  table { font-size: 8pt; }
+
+  /* Repeat the column header at the top of every printed page. */
+  thead {
+    position: static;
+    display: table-header-group;
+  }
+  tfoot { display: table-footer-group; }
+
+  /* The core requirement: never slice a row in half across a page break. */
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Don't strand a group header at the foot of a page away from its rows. */
+  .gl-group-header { break-after: avoid; }
+
+  /* On screen cells are clipped with ellipsis; in print let them wrap so no
+     data is lost. */
+  thead th { white-space: normal; }
+  tbody td {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    max-width: none;
+  }
 }

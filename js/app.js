@@ -6,6 +6,7 @@
 // 3. Import it below and add it to the DRAWDOWNS array
 
 import * as paymentType from './drawdowns/payment-type.js';
+import { initPdfExport } from './pdf-export.js';
 
 const DRAWDOWNS = [
   paymentType,
@@ -32,6 +33,8 @@ DRAWDOWNS.forEach((mod, i) => {
     document.getElementById(`drawdown-${mod.id}`).style.display = 'none';
   }
 });
+
+initPdfExport();
 
 // Tab switching
 tabsEl.addEventListener('click', e => {
